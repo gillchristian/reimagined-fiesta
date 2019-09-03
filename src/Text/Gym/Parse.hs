@@ -9,6 +9,7 @@ import qualified Data.Functor.Identity                as FI
 import qualified Text.Parsec.Char                     as C
 import qualified Text.Parsec.Combinator               as Comb
 import qualified Text.Parsec.Prim                     as P
+import qualified Text.Parsec.String                   as P
 import qualified Text.ParserCombinators.Parsec.Number as N
 
 type Sets = Int
@@ -28,30 +29,33 @@ data Set
                 Weight
   deriving (Show, Eq)
 
--- TODO `FI.Identity` ?
-type ParsecT a r = P.ParsecT String a FI.Identity r
+set :: P.Parser Set
+set = Comb.choice [P.try parseFullSet, P.try parseWithHelpSet, parsePartialSet]
 
-set :: ParsecT a Set
-set =
-  Comb.choice
-    [P.try parseFullSet, P.try parseWithHelpSet, parsePartialSet]
-
-sets :: ParsecT a [Set]
+sets :: P.Parser [Set]
 sets = Comb.sepEndBy1 set C.space
 
--- "1x1x1.0"
-parseFullSet :: ParsecT a Set
+-- "1x1x1.1"
+-- "1x1x1"
+parseFullSet :: P.Parser Set
 parseFullSet =
-  FullSet <$> N.decimal <* C.char 'x'
-          <*> N.decimal <* C.char 'x'
-          <*> N.floating2 False
+  FullSet 
+    <$> N.decimal <* C.char 'x'
+    <*> N.decimal <* C.char 'x'
+    <*> N.floating2 False
 
--- TODO: this should be used if `parseFullSet` didn't work
-parsePartialSet :: ParsecT a Set
-parsePartialSet = SetZero <$> N.decimal <* C.char 'x' <*> N.decimal
+-- "1x1"
+parsePartialSet :: P.Parser Set
+parsePartialSet = 
+  SetZero
+    <$> N.decimal <* C.char 'x'
+    <*> N.decimal
 
-parseWithHelpSet :: ParsecT a Set
+-- "1x1xh1.1"
+-- "1x1xh1"
+parseWithHelpSet :: P.Parser Set
 parseWithHelpSet =
-  SetWithHelp <$> N.decimal <* C.char 'x'
-              <*> N.decimal <* C.char 'x' <* C.char 'h'
-              <*> N.floating2 True
+  SetWithHelp 
+    <$> N.decimal <* C.char 'x'
+    <*> N.decimal <* C.char 'x' <* C.char 'h'
+    <*> N.floating2 True

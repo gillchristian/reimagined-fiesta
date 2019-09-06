@@ -1,1 +1,8 @@
-1x10x20.0 10x5xh36 0x10
+# 2019-06-05
+Dumbbell biceps pulls: 2x10x14 2x7x16
+Seated cable row: 2x10x30 // comments somehow finish the parsing
+Back seated pulls: 2x4x45
+
+# 2019-05-31
+Bench press: 1x20x20
+Tricpes kick backs: 2x10x6

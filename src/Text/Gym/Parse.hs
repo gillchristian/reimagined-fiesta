@@ -1,15 +1,15 @@
 module Text.Gym.Parse
-  ( Set(..)
-  , set
-  , exercise
-  , routine
-  , comment
-  , file
-  , tilEndOfLine
+  ( Sets
+  , Reps
+  , Weight
+  , Set(..)
+  , Exercise(..)
+  , Routine(..)
+  , fileParser
   ) where
 
 import qualified Data.ByteString.Char8                as Bs
-import qualified Data.Functor.Identity                as FI
+import           Data.Functor                         (($>))
 import qualified Text.Parsec.Char                     as C
 import qualified Text.Parsec.Combinator               as Comb
 import           Text.Parsec.Prim                     ((<?>), (<|>))
@@ -45,41 +45,33 @@ data Routine =
           [Exercise]
   deriving (Show, Eq)
 
-file :: P.Parser [Routine]
-file = Comb.many1 routine
+fileParser :: P.Parser [Routine]
+fileParser = Comb.many1 routine
 
+-- consumes the extra new line (two \n between routines)
 routine :: P.Parser Routine
-routine =
-  do C.char '#'
-     C.spaces
-     date <- tilEndOfLine
-     C.spaces
-     exercises <- Comb.manyTill exercise (P.try eol <|> Comb.eof)
-     pure $ Routine date exercises
-     <?> "routine"
+routine = Routine <$> label <*> exercises
+  where
+    label = C.char '#' *> C.spaces *> tilEol <* C.spaces
+    exercises = Comb.manyTill exercise (eol <|> Comb.eof)
 
 exercise :: P.Parser Exercise
-exercise =
-  do label <- Comb.many1 (C.noneOf ":0123456789\n")
-     C.char ':' <?> "\":\" separating exercise label from sets"
-     C.spaces
-     -- TODO: why do comments stop the parsing ????????
-     sets <- Comb.manyTill set (P.try eol <|> P.try Comb.eof <|> P.try comment)
-     pure $ Exercise label sets Nothing
-     <?> "exercise"
+exercise = Exercise <$> label <*> sets <*> commentOrNewLine
+  where
+    sets = Comb.sepEndBy1 set (Comb.many1 $ C.char ' ')
+    label =
+      (Comb.many1 (C.noneOf ":\n") <* C.char ':' <* C.spaces) <?>
+      "\":\" separating exercise label from sets"
+    -- consumes the new line
+    commentOrNewLine = P.try comment <|> C.newline $> Nothing
 
-comment :: P.Parser ()
--- TODO: do not ignore the comment
+comment :: P.Parser (Maybe String)
 comment =
-  do C.spaces
-     C.string "//"
-     C.spaces
-     tilEndOfLine
-     pure ()
-     <?> "comment"
+  Comb.optionMaybe
+    (C.spaces *> C.string "//" *> C.spaces *> Comb.manyTill C.anyChar C.newline)
 
 set :: P.Parser Set
-set = C.spaces *> (P.try fullSet <|> P.try withHelpSet <|> partialSet) <?> "set"
+set = (P.try fullSet <|> P.try withHelpSet <|> partialSet) <?> "set"
 
 -- "1x1x1.1"
 -- "1x1x1"
@@ -102,8 +94,8 @@ withHelpSet =
   C.char 'h' <*>
   N.floating2 True <?> "set with help (e.g. \"1x1\")"
 
-eol :: P.Parser ()
-eol = C.oneOf "\n\r" >> pure () <?> "end of line"
+tilEol :: P.Parser String
+tilEol = Comb.many1 $ C.noneOf "\r\n"
 
-tilEndOfLine :: P.Parser String
-tilEndOfLine = Comb.many1 (C.noneOf "\r\n")
+eol :: P.Parser ()
+eol = C.newline $> ()

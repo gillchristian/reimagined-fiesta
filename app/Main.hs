@@ -2,11 +2,11 @@ module Main where
 
 import Text.Parsec.Combinator as Comb
 import Text.Parsec.String
-import Text.Gym.Parse
+import Text.Gym.Parse as Gym
 
 main :: IO ()
 main = do
-  result <- parseFromFile (Comb.many1 routine) "test.txt"
+  result <- parseFromFile Gym.fileParser "test.txt"
   case result of
     Right xs -> print xs
     Left err -> print err

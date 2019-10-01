@@ -8,7 +8,6 @@ module Text.Gym.Parse
   , fileParser
   ) where
 
-import qualified Data.ByteString.Char8                as Bs
 import           Data.Functor                         (($>))
 import qualified Text.Parsec.Char                     as C
 import qualified Text.Parsec.Combinator               as Comb
